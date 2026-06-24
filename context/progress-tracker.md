@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Foundation — Design System & UI Primitives (feature spec `01-design-system`)
+- Editor Chrome — base navbar and sidebar shell (feature spec `02-editor-chrome`)
 
 ## Current Goal
 
-- Install and configure shadcn/ui, add the base UI primitive components, install `lucide-react`, provide a `cn()` helper, and ensure everything renders against the dark theme.
+- Build the reusable editor chrome that frames every editor screen: the top navbar, the floating left project sidebar, and a reusable dialog pattern ready for future use.
 
 ## Completed
 
@@ -18,6 +18,11 @@ Update this file whenever the current phase, active feature, or implementation s
   - `lib/utils.ts` exposes the `cn()` Tailwind class-merge helper.
   - Theme tokens written to `app/globals.css`; forced dark-only by adding the `dark` class to `<html>` in `app/layout.tsx` so no default light styling appears.
   - Verified: `tsc --noEmit` and `next build` both pass.
+- `02-editor-chrome`: Added the base editor chrome components in `components/editor/`.
+  - `editor-navbar.tsx`: fixed-height (`h-14`) top navbar with left/center/right sections, dark `bg-card` background and a subtle bottom border. Left section holds a sidebar toggle button that swaps `PanelLeftOpen` / `PanelLeftClose` based on `isSidebarOpen`; right section is intentionally empty.
+  - `project-sidebar.tsx`: floating left overlay (`absolute`, `z-40`) that slides in from the left via a transform on the `isOpen` prop so it does not push page content. Header with `Projects` title + close button, shadcn `Tabs` (`My Projects` / `Shared`) each showing an empty placeholder state, and a full-width `New Project` button with the `Plus` icon pinned to the bottom.
+  - `editor-dialog.tsx`: reusable dialog pattern wrapping the shadcn `Dialog`, supporting `title`, `description`, and `footer` actions, styled with existing `globals.css` tokens (`bg-popover` / `text-popover-foreground`). No concrete dialogs built yet — the pattern is ready for future use.
+  - Verified: `tsc --noEmit` passes and `eslint components/editor` reports no errors.
 
 ## In Progress
 
