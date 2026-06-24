@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Prisma Schema & Data Layer (`05-prisma`) — complete. Project data models, the cached Prisma client singleton, and the first migration are in place. The data layer is ready; the next unit is wiring API routes that use `lib/prisma.ts` to replace the `04-project-dialogs` mock data and the hook's simulated submits.
+- Wire Editor Home (`07-wire-editor-home`) — complete. The `/editor` sidebar and dialogs now read/write real project data through the `06-project-apis` routes; no mock data remains.
 
 ## Current Goal
 
-- Build the project persistence API routes (`app/api/...`) on top of `lib/prisma.ts`, replacing `lib/mock-projects.ts` and the simulated submits in `hooks/use-project-dialogs.ts` with real reads/writes against the `Project` / `ProjectCollaborator` models.
+- Build the project workspace route (`/editor/[roomId]`) that the create flow navigates to (and that delete compares against for the active-workspace redirect).
 
 ## Completed
 
@@ -51,6 +51,23 @@ Update this file whenever the current phase, active feature, or implementation s
   - Installed `@prisma/extension-accelerate` (the only addition; `prisma`, `@prisma/client`, `@prisma/adapter-pg`, and `pg` were already present) to support the Accelerate branch.
   - Migration `20260624080555_init_projects` created and applied against the Prisma Postgres database; the generated client lives at `app/generated/prisma`.
   - Verified: `npx prisma migrate dev` applied cleanly, `eslint` reports no errors on `lib/prisma.ts`, and `npm run build` passes (TypeScript included).
+- `06-project-apis`: Added the backend-only project REST API routes on top of `lib/prisma.ts`. No UI wiring (per spec).
+  - `app/api/projects/route.ts`: `GET` lists the authenticated user's projects (`where: { ownerId: userId }`, ordered `createdAt desc`); `POST` creates a project, defaulting a missing/blank `name` to `Untitled Project` and using the schema's `cuid` ID strategy (no sequential IDs). Returns `201` on create.
+  - `app/api/projects/[projectId]/route.ts`: `PATCH` renames (requires a non-empty `name`, else `400`); `DELETE` deletes. Both load the project, return `404` when missing, and enforce owner-only mutation.
+  - Auth: every handler reads `userId` from Clerk's `await auth()`; missing user → `401`. Non-owner rename/delete → `403`. `ownerId` is always the Clerk user ID.
+  - Fixed a latent type defect in `lib/prisma.ts`: `createPrismaClient` previously returned a union (Accelerate-extended vs. plain client), which made model methods like `findUnique` non-callable once a consumer existed. Unified the return type to `PrismaClient` (casting the Accelerate branch). Runtime branching is unchanged.
+  - Verified: `npm run build` passes (TypeScript + route registration for `/api/projects` and `/api/projects/[projectId]`); `eslint` reports no errors on the new routes or `lib/prisma.ts`.
+- `07-wire-editor-home`: Wired the editor home sidebar and dialogs to the real project API, replacing all `04-project-dialogs` mock data.
+  - `lib/projects.ts`: server-only `getProjectsForUser()` data helper returning `{ owned, shared }` UI projects. Owned = `where: { ownerId: userId }`; shared = projects where a collaborator `email` matches the Clerk `currentUser()` primary email (excluding owned), each ordered `createdAt desc`. Maps DB records to the UI `Project` type with `slug = id` (the room ID doubles as the displayed slug). Returns empty lists when unauthenticated.
+  - `app/editor/page.tsx`: server component now calls `getProjectsForUser()` and passes `ownedProjects` / `sharedProjects` into `EditorShell`. No client-side fetching on initial load.
+  - `hooks/use-project-actions.ts` (replaces the deleted `use-project-dialogs.ts`): owns dialog state plus real mutations via `fetch`. Create locks a short unique suffix when the dialog opens, exposes a derived `roomId` (`slugify(name)-suffix`) for the live preview, `POST`s `{ id: roomId, name }`, and `router.push("/editor/<id>")`. Rename `PATCH`es `{ name }` then `router.refresh()`. Delete `DELETE`s then `router.push("/editor")` when `usePathname()` is on the active workspace (`/editor/<id>`), else `router.refresh()`. `close()` is a no-op while loading; failed responses leave the dialog open.
+  - `app/api/projects/route.ts` (`POST`): now accepts an optional client-supplied `id` (the room ID) so the project ID and Liveblocks room ID stay aligned; omitting it falls back to the schema's `cuid` default. `06`'s name defaulting is unchanged.
+  - `components/editor/dialogs/create-project-dialog.tsx`: preview relabeled `Room ID preview` and driven by the hook's `roomId` (no longer slugifies locally), so the preview matches the ID that is actually created.
+  - `components/editor/project-sidebar.tsx`: renders `owned` / `shared` props instead of importing mock fixtures; `editor-shell.tsx` forwards the server-fetched lists and the create dialog's `roomId`.
+  - Removed `lib/mock-projects.ts` and `hooks/use-project-dialogs.ts`.
+  - Note: the create flow navigates to `/editor/[roomId]`, a workspace route that does not exist yet (a separate, not-yet-built unit) — navigation currently lands on a 404.
+  - Post-review hardening (Bugbot): `POST /api/projects` now wraps `prisma.project.create` in a try/catch and returns `409` on a `Prisma.PrismaClientKnownRequestError` with code `P2002` (duplicate client-supplied room ID from a double submit/retry); other errors rethrow. `useProjectActions` now exposes an `error` string and surfaces failed/`!response.ok` mutations (and network exceptions) instead of returning silently; the create/rename/delete dialogs render the message in a `role="alert"` line, and `error` resets on open/close.
+  - Verified: `npm run build` passes (TypeScript + all route registration); `eslint` reports no errors on the changed files.
 
 ## In Progress
 
@@ -58,7 +75,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Project persistence API routes under `app/api/` using `lib/prisma.ts`, replacing the `04-project-dialogs` mock data and simulated submits with real CRUD against `Project` / `ProjectCollaborator` (with Clerk ownership checks at the mutation boundary).
+- Build the project workspace route (`/editor/[roomId]`) that the create flow navigates to and that delete checks against.
 
 ## Open Questions
 

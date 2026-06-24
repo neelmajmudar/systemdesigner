@@ -8,12 +8,18 @@ import { ProjectSidebar } from "@/components/editor/project-sidebar";
 import { CreateProjectDialog } from "@/components/editor/dialogs/create-project-dialog";
 import { RenameProjectDialog } from "@/components/editor/dialogs/rename-project-dialog";
 import { DeleteProjectDialog } from "@/components/editor/dialogs/delete-project-dialog";
-import { useProjectDialogs } from "@/hooks/use-project-dialogs";
+import { useProjectActions } from "@/hooks/use-project-actions";
 import { cn } from "@/lib/utils";
+import type { Project } from "@/types/project";
 
-export function EditorShell() {
+interface EditorShellProps {
+  ownedProjects: Project[];
+  sharedProjects: Project[];
+}
+
+export function EditorShell({ ownedProjects, sharedProjects }: EditorShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const dialogs = useProjectDialogs();
+  const dialogs = useProjectActions();
 
   const handleDialogOpenChange = (open: boolean) => {
     if (!open) {
@@ -43,6 +49,8 @@ export function EditorShell() {
 
         <ProjectSidebar
           isOpen={isSidebarOpen}
+          owned={ownedProjects}
+          shared={sharedProjects}
           onClose={() => setIsSidebarOpen(false)}
           onCreate={dialogs.openCreate}
           onRename={dialogs.openRename}
@@ -53,7 +61,9 @@ export function EditorShell() {
       <CreateProjectDialog
         open={dialogs.activeDialog === "create"}
         name={dialogs.name}
+        roomId={dialogs.roomId}
         isLoading={dialogs.isLoading}
+        error={dialogs.error}
         onNameChange={dialogs.setName}
         onOpenChange={handleDialogOpenChange}
         onSubmit={dialogs.submitCreate}
@@ -64,6 +74,7 @@ export function EditorShell() {
         name={dialogs.name}
         currentName={dialogs.activeProject?.name ?? ""}
         isLoading={dialogs.isLoading}
+        error={dialogs.error}
         onNameChange={dialogs.setName}
         onOpenChange={handleDialogOpenChange}
         onSubmit={dialogs.submitRename}
@@ -73,6 +84,7 @@ export function EditorShell() {
         open={dialogs.activeDialog === "delete"}
         projectName={dialogs.activeProject?.name ?? ""}
         isLoading={dialogs.isLoading}
+        error={dialogs.error}
         onOpenChange={handleDialogOpenChange}
         onConfirm={dialogs.submitDelete}
       />

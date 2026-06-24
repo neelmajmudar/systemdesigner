@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectListItem } from "@/components/editor/project-list-item";
-import { MOCK_OWNED_PROJECTS, MOCK_SHARED_PROJECTS } from "@/lib/mock-projects";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 
 interface ProjectSidebarProps {
   isOpen: boolean;
+  owned: Project[];
+  shared: Project[];
   onClose: () => void;
   onCreate: () => void;
   onRename: (project: Project) => void;
@@ -20,6 +21,8 @@ interface ProjectSidebarProps {
 
 export function ProjectSidebar({
   isOpen,
+  owned,
+  shared,
   onClose,
   onCreate,
   onRename,
@@ -55,10 +58,10 @@ export function ProjectSidebar({
         </TabsList>
 
         <TabsContent value="my-projects" className="flex-1 overflow-hidden">
-          {MOCK_OWNED_PROJECTS.length > 0 ? (
+          {owned.length > 0 ? (
             <ScrollArea className="h-full">
               <div className="flex flex-col gap-1 pr-2">
-                {MOCK_OWNED_PROJECTS.map((project) => (
+                {owned.map((project) => (
                   <ProjectListItem
                     key={project.id}
                     project={project}
@@ -78,10 +81,10 @@ export function ProjectSidebar({
         </TabsContent>
 
         <TabsContent value="shared" className="flex-1 overflow-hidden">
-          {MOCK_SHARED_PROJECTS.length > 0 ? (
+          {shared.length > 0 ? (
             <ScrollArea className="h-full">
               <div className="flex flex-col gap-1 pr-2">
-                {MOCK_SHARED_PROJECTS.map((project) => (
+                {shared.map((project) => (
                   <ProjectListItem key={project.id} project={project} />
                 ))}
               </div>
