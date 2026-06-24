@@ -10,6 +10,7 @@ interface RenameProjectDialogProps {
   name: string;
   currentName: string;
   isLoading: boolean;
+  error: string | null;
   onNameChange: (name: string) => void;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
@@ -20,6 +21,7 @@ export function RenameProjectDialog({
   name,
   currentName,
   isLoading,
+  error,
   onNameChange,
   onOpenChange,
   onSubmit,
@@ -60,6 +62,12 @@ export function RenameProjectDialog({
           autoFocus
           disabled={isLoading}
         />
+
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
       </form>
     </EditorDialog>
   );

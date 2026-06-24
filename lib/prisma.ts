@@ -4,21 +4,19 @@ import { PrismaClient } from "@/app/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL ?? "";
 
-function createPrismaClient() {
+function createPrismaClient(): PrismaClient {
   if (databaseUrl.startsWith("prisma+postgres://")) {
     return new PrismaClient({ accelerateUrl: databaseUrl }).$extends(
       withAccelerate(),
-    );
+    ) as unknown as PrismaClient;
   }
 
   const adapter = new PrismaPg({ connectionString: databaseUrl });
   return new PrismaClient({ adapter });
 }
 
-type PrismaClientSingleton = ReturnType<typeof createPrismaClient>;
-
 const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClientSingleton;
+  prisma?: PrismaClient;
 };
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
