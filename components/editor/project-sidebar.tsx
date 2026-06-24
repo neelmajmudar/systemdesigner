@@ -3,15 +3,28 @@
 import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectListItem } from "@/components/editor/project-list-item";
+import { MOCK_OWNED_PROJECTS, MOCK_SHARED_PROJECTS } from "@/lib/mock-projects";
 import { cn } from "@/lib/utils";
+import type { Project } from "@/types/project";
 
 interface ProjectSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreate: () => void;
+  onRename: (project: Project) => void;
+  onDelete: (project: Project) => void;
 }
 
-export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
+export function ProjectSidebar({
+  isOpen,
+  onClose,
+  onCreate,
+  onRename,
+  onDelete,
+}: ProjectSidebarProps) {
   return (
     <aside
       aria-hidden={!isOpen}
@@ -41,27 +54,50 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
           <TabsTrigger value="shared">Shared</TabsTrigger>
         </TabsList>
 
-        <TabsContent
-          value="my-projects"
-          className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-border"
-        >
-          <p className="px-6 text-center text-sm text-muted-foreground">
-            No projects yet
-          </p>
+        <TabsContent value="my-projects" className="flex-1 overflow-hidden">
+          {MOCK_OWNED_PROJECTS.length > 0 ? (
+            <ScrollArea className="h-full">
+              <div className="flex flex-col gap-1 pr-2">
+                {MOCK_OWNED_PROJECTS.map((project) => (
+                  <ProjectListItem
+                    key={project.id}
+                    project={project}
+                    onRename={onRename}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border">
+              <p className="px-6 text-center text-sm text-muted-foreground">
+                No projects yet
+              </p>
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent
-          value="shared"
-          className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-border"
-        >
-          <p className="px-6 text-center text-sm text-muted-foreground">
-            Nothing shared with you yet
-          </p>
+        <TabsContent value="shared" className="flex-1 overflow-hidden">
+          {MOCK_SHARED_PROJECTS.length > 0 ? (
+            <ScrollArea className="h-full">
+              <div className="flex flex-col gap-1 pr-2">
+                {MOCK_SHARED_PROJECTS.map((project) => (
+                  <ProjectListItem key={project.id} project={project} />
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border">
+              <p className="px-6 text-center text-sm text-muted-foreground">
+                Nothing shared with you yet
+              </p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
       <div className="border-t border-border p-3">
-        <Button variant="outline" className="w-full">
+        <Button variant="outline" className="w-full" onClick={onCreate}>
           <Plus />
           New Project
         </Button>

@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Authentication — wire Clerk into the app: provider, auth pages, route protection, redirects, and user menu (feature spec `03-auth`)
+- Project Dialogs & Editor Home (`04-project-dialogs`) — complete. Editor home, create/rename/delete dialogs, and owner-only sidebar actions are wired against mock data. Awaiting the next feature unit (likely real project persistence: Prisma project records + API routes replacing the mock data and the hook's simulated submits).
 
 ## Current Goal
 
-- Integrate Clerk for user identity and route protection: wrap the root layout with `ClerkProvider` (dark theme themed via existing CSS variables), add minimal two-panel sign-in/sign-up pages, protect all routes except the public auth paths via `proxy.ts`, redirect `/` based on auth state, and surface the `UserButton` in the editor navbar.
+- Pick up the next planned feature unit. The `04-project-dialogs` UI is intentionally mock-only: `lib/mock-projects.ts` and the simulated submits in `hooks/use-project-dialogs.ts` are the seams where real persistence (API routes + Prisma) will be wired in.
 
 ## Completed
 
@@ -33,6 +33,18 @@ Update this file whenever the current phase, active feature, or implementation s
   - `app/page.tsx`: now a server component that reads `await auth()` and redirects authenticated users to `/editor` and everyone else to `/sign-in`.
   - `components/editor/editor-navbar.tsx`: right section now renders Clerk's built-in `UserButton`; default user menu/profile flows untouched.
   - Verified: `npm run build` passes; `proxy.ts` is detected as Middleware and all routes compile.
+- `04-project-dialogs`: Built the `/editor` home screen, project create/rename/delete dialogs, and owner-only sidebar actions. Mock data only — no API calls or persistence.
+  - `types/project.ts`: `Project` interface (`id`, `name`, `slug`, `access`) with `ProjectAccess` = `"owner" | "collaborator"`.
+  - `lib/mock-projects.ts`: `MOCK_OWNED_PROJECTS` / `MOCK_SHARED_PROJECTS` fixtures. `lib/slug.ts`: `slugify()` helper (lowercase, non-alphanumeric → hyphen, trimmed) used for the live slug preview.
+  - `hooks/use-project-dialogs.ts`: dedicated hook owning dialog state (`activeDialog`), the target `activeProject`, shared form `name`, and `isLoading`. Exposes `openCreate/openRename/openDelete/close`, `setName`, and `submitCreate/submitRename/submitDelete`. Submits run a 500ms simulated-latency lifecycle (toggles `isLoading`, then resets) since there is no persistence yet; `close()` is a no-op while loading.
+  - `components/editor/editor-home.tsx`: centered, card-less home content — `Create a project or open an existing one` heading, supporting description, and a `New Project` button with the `Plus` icon that opens the Create dialog.
+  - `components/editor/dialogs/`: `create-project-dialog` (name input + live slug preview that updates as you type), `rename-project-dialog` (prefilled + auto-focused name input, current name in the description, Enter submits via form), and `delete-project-dialog` (destructive confirmation only, no input, destructive confirm button). All reuse the existing `editor-dialog.tsx` wrapper.
+  - `components/editor/project-list-item.tsx`: a project row; for owned projects it renders a hover-revealed `MoreHorizontal` dropdown (`Rename` / destructive `Delete`). Actions are hidden for shared/collaborator projects.
+  - `components/editor/project-sidebar.tsx`: now renders the mock owned/shared lists (scrollable, empty-state fallback) and forwards `onCreate/onRename/onDelete`; bottom `New Project` button and sidebar toggle behavior unchanged.
+  - `components/editor/editor-shell.tsx`: instantiates `useProjectDialogs`, renders the home content, mounts the three dialogs, and adds a mobile-only (`md:hidden`) backdrop scrim that closes the sidebar on outside tap.
+  - Added shadcn `dropdown-menu` and `label` primitives via `npx shadcn@latest add` (generated, unmodified).
+  - Centering fix: the editor home content was pinned under the navbar because the canvas container (`relative flex-1`, `display:block` with an `auto` specified height) could not resolve the child's `h-full`. Fixed by making the canvas container itself center its in-flow child (`flex items-center justify-center`) and dropping `h-full` from `editor-home.tsx`; the absolute sidebar/scrim overlays are unaffected. Verified in-browser that the heading/description/CTA are vertically and horizontally centered (the sidebar is a floating overlay over the centered content, by design).
+  - Verified: `tsc --noEmit`, `eslint`, and the dev `/editor` route compile with no errors.
 
 ## In Progress
 
