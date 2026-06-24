@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Project Dialogs & Editor Home (`04-project-dialogs`) — complete. Editor home, create/rename/delete dialogs, and owner-only sidebar actions are wired against mock data. Awaiting the next feature unit (likely real project persistence: Prisma project records + API routes replacing the mock data and the hook's simulated submits).
+- Prisma Schema & Data Layer (`05-prisma`) — complete. Project data models, the cached Prisma client singleton, and the first migration are in place. The data layer is ready; the next unit is wiring API routes that use `lib/prisma.ts` to replace the `04-project-dialogs` mock data and the hook's simulated submits.
 
 ## Current Goal
 
-- Pick up the next planned feature unit. The `04-project-dialogs` UI is intentionally mock-only: `lib/mock-projects.ts` and the simulated submits in `hooks/use-project-dialogs.ts` are the seams where real persistence (API routes + Prisma) will be wired in.
+- Build the project persistence API routes (`app/api/...`) on top of `lib/prisma.ts`, replacing `lib/mock-projects.ts` and the simulated submits in `hooks/use-project-dialogs.ts` with real reads/writes against the `Project` / `ProjectCollaborator` models.
 
 ## Completed
 
@@ -45,6 +45,12 @@ Update this file whenever the current phase, active feature, or implementation s
   - Added shadcn `dropdown-menu` and `label` primitives via `npx shadcn@latest add` (generated, unmodified).
   - Centering fix: the editor home content was pinned under the navbar because the canvas container (`relative flex-1`, `display:block` with an `auto` specified height) could not resolve the child's `h-full`. Fixed by making the canvas container itself center its in-flow child (`flex items-center justify-center`) and dropping `h-full` from `editor-home.tsx`; the absolute sidebar/scrim overlays are unaffected. Verified in-browser that the heading/description/CTA are vertically and horizontally centered (the sidebar is a floating overlay over the centered content, by design).
   - Verified: `tsc --noEmit`, `eslint`, and the dev `/editor` route compile with no errors.
+- `05-prisma`: Added the project data models, the Prisma client singleton, and the first migration.
+  - `prisma/models/project.prisma`: multi-file schema model file (config uses `schema: "prisma/"`). `ProjectStatus` enum (`DRAFT`, `ARCHIVED`). `Project` model — `id` (cuid), `ownerId` (Clerk user ID), `name`, optional `description`, `status` (`@default(DRAFT)`), optional `canvasJsonPath` (future Vercel Blob reference), `createdAt`/`updatedAt`, and a `collaborators` relation; indexed on `ownerId` and `createdAt`. `ProjectCollaborator` model — `id`, `projectId` + `project` relation with `onDelete: Cascade`, `email`, `createdAt`; `@@unique([projectId, email])`, plus indexes on `email` and `[projectId, createdAt]`.
+  - `lib/prisma.ts`: cached singleton. Branches on `DATABASE_URL` — a `prisma+postgres://` URL uses `new PrismaClient({ accelerateUrl }).$extends(withAccelerate())`; any other URL uses a direct `@prisma/adapter-pg` (`PrismaPg`) adapter. Client is cached on `globalThis` outside production for hot-reload safety. Imports `PrismaClient` from the generated client at `@/app/generated/prisma/client`.
+  - Installed `@prisma/extension-accelerate` (the only addition; `prisma`, `@prisma/client`, `@prisma/adapter-pg`, and `pg` were already present) to support the Accelerate branch.
+  - Migration `20260624080555_init_projects` created and applied against the Prisma Postgres database; the generated client lives at `app/generated/prisma`.
+  - Verified: `npx prisma migrate dev` applied cleanly, `eslint` reports no errors on `lib/prisma.ts`, and `npm run build` passes (TypeScript included).
 
 ## In Progress
 
@@ -52,7 +58,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Add the next planned feature unit here.
+- Project persistence API routes under `app/api/` using `lib/prisma.ts`, replacing the `04-project-dialogs` mock data and simulated submits with real CRUD against `Project` / `ProjectCollaborator` (with Clerk ownership checks at the mutation boundary).
 
 ## Open Questions
 
@@ -60,7 +66,8 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Architecture Decisions
 
-- Add decisions that affect the system design or data model.
+- Prisma 7 with the `prisma-client` generator: the client is generated to `app/generated/prisma` and must be imported from `@/app/generated/prisma/client` (never `@prisma/client`). A driver adapter (or `accelerateUrl`) is mandatory at runtime — `new PrismaClient()` with no options throws.
+- `lib/prisma.ts` is the single Prisma access point. It branches on the `DATABASE_URL` scheme so the same code works for direct Postgres (`@prisma/adapter-pg`) and Prisma Accelerate (`prisma+postgres://` → `withAccelerate()`), with the instance cached on `globalThis` outside production.
 
 ## Session Notes
 
