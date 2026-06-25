@@ -4,11 +4,11 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Current Phase
 
-- Wire Editor Home (`07-wire-editor-home`) — complete. The `/editor` sidebar and dialogs now read/write real project data through the `06-project-apis` routes; no mock data remains.
+- Editor Workspace Shell (`08-editor-workspace-shell`) — complete. The `/editor/[roomId]` route exists as a server component with owner/collaborator access checks, an `AccessDenied` fallback, and a full-viewport workspace layout (navbar with project name + share/AI-toggle actions, reused `ProjectSidebar` with the active room highlighted, canvas placeholder, and an AI-chat sidebar placeholder). No real canvas, Liveblocks, AI, or sharing behavior yet.
 
 ## Current Goal
 
-- Build the project workspace route (`/editor/[roomId]`) that the create flow navigates to (and that delete compares against for the active-workspace redirect).
+- Bring the workspace canvas to life: real-time collaborative canvas (Liveblocks + React Flow) inside `/editor/[roomId]`.
 
 ## Completed
 
@@ -54,7 +54,7 @@ Update this file whenever the current phase, active feature, or implementation s
 - `06-project-apis`: Added the backend-only project REST API routes on top of `lib/prisma.ts`. No UI wiring (per spec).
   - `app/api/projects/route.ts`: `GET` lists the authenticated user's projects (`where: { ownerId: userId }`, ordered `createdAt desc`); `POST` creates a project, defaulting a missing/blank `name` to `Untitled Project` and using the schema's `cuid` ID strategy (no sequential IDs). Returns `201` on create.
   - `app/api/projects/[projectId]/route.ts`: `PATCH` renames (requires a non-empty `name`, else `400`); `DELETE` deletes. Both load the project, return `404` when missing, and enforce owner-only mutation.
-  - Auth: every handler reads `userId` from Clerk's `await auth()`; missing user → `401`. Non-owner rename/delete → `403`. `ownerId` is always the Clerk user ID.
+  - Auth: every handler reads `userId` from Clerk's `await auth()`; missing user → `401`. A missing project and a project owned by someone else both return `404` (rename/delete) so callers cannot probe which project IDs exist. `ownerId` is always the Clerk user ID.
   - Fixed a latent type defect in `lib/prisma.ts`: `createPrismaClient` previously returned a union (Accelerate-extended vs. plain client), which made model methods like `findUnique` non-callable once a consumer existed. Unified the return type to `PrismaClient` (casting the Accelerate branch). Runtime branching is unchanged.
   - Verified: `npm run build` passes (TypeScript + route registration for `/api/projects` and `/api/projects/[projectId]`); `eslint` reports no errors on the new routes or `lib/prisma.ts`.
 - `07-wire-editor-home`: Wired the editor home sidebar and dialogs to the real project API, replacing all `04-project-dialogs` mock data.
@@ -68,6 +68,15 @@ Update this file whenever the current phase, active feature, or implementation s
   - Note: the create flow navigates to `/editor/[roomId]`, a workspace route that does not exist yet (a separate, not-yet-built unit) — navigation currently lands on a 404.
   - Post-review hardening (Bugbot): `POST /api/projects` now wraps `prisma.project.create` in a try/catch and returns `409` on a `Prisma.PrismaClientKnownRequestError` with code `P2002` (duplicate client-supplied room ID from a double submit/retry); other errors rethrow. `useProjectActions` now exposes an `error` string and surfaces failed/`!response.ok` mutations (and network exceptions) instead of returning silently; the create/rename/delete dialogs render the message in a `role="alert"` line, and `error` resets on open/close.
   - Verified: `npm run build` passes (TypeScript + all route registration); `eslint` reports no errors on the changed files.
+- `08-editor-workspace-shell`: Built the `/editor/[roomId]` workspace route as a server component with server-side access checks and a full-viewport layout. No canvas/Liveblocks/AI/sharing logic (per scope).
+  - `lib/project-access.ts`: `getCurrentIdentity()` returns `{ userId, email }` from Clerk (`auth()` + `currentUser()` primary email) or `null` when unauthenticated. `getAccessibleProject(projectId, identity)` loads the project (`include: { collaborators: true }`) and returns it only when the identity is the owner or a collaborator whose email matches; returns `null` for missing or unauthorized projects.
+  - `app/editor/[roomId]/page.tsx`: server component. Unauthenticated → `redirect("/sign-in")`. Missing/unauthorized project → renders `AccessDenied`. Otherwise fetches the user's project lists via `getProjectsForUser()` and renders `EditorWorkspace` with `roomId` + `projectName`. (`params` is awaited — Next.js 16 async params.)
+  - `components/editor/access-denied.tsx`: server component. Centered layout, lock icon in a bordered tile, short message, and an outline `Back to projects` button linking to `/editor`.
+  - `components/editor/editor-workspace-navbar.tsx`: workspace top navbar (`h-14`, `bg-card`, bottom border). Left: project-sidebar toggle (`PanelLeftOpen`/`PanelLeftClose`) + truncated project name. Right: a `Share` button (no behavior yet, per scope), an AI-sidebar toggle (`Sparkles`, `aria-pressed`), and Clerk's `UserButton`.
+  - `components/editor/editor-workspace.tsx`: client shell. Reuses `useProjectActions` to keep the sidebar's create/rename/delete dialogs fully functional (delete already redirects away from the active workspace). Renders the workspace navbar, the central canvas placeholder (`bg-background`, centered message, fills remaining space), the existing `ProjectSidebar` (left floating overlay) with `activeProjectId={roomId}`, a mobile backdrop scrim, and a right slide-over AI-chat sidebar placeholder (`w-80`, toggled by `isAiSidebarOpen`).
+  - `components/editor/project-sidebar.tsx` + `project-list-item.tsx`: added an optional `activeProjectId` / `isActive` prop chain so the current room is highlighted (`bg-muted` row + `text-primary` name, `aria-current="page"`). Home (`editor-shell.tsx`) is unchanged — it omits the prop, so nothing is highlighted there.
+  - Verified: `npm run build` passes (TypeScript clean, `/editor/[roomId]` registered as a dynamic route); `eslint` reports no errors on the new/changed files.
+  - Post-review hardening (Bugbot): (1) `project-list-item.tsx` now wraps the name/slug in a `next/link` to `/editor/{project.id}`, so sidebar rows open/switch projects (the dropdown actions stay separate). (2) `app/api/projects/[projectId]/route.ts` `PATCH`/`DELETE` now return `404` for both missing and non-owner projects (previously `403` for non-owner), removing the ID-enumeration signal. (3) `use-project-actions.ts` `submitCreate` now treats a `409` (duplicate client-supplied room ID from a double submit/retry) as success and navigates to `/editor/{roomId}` instead of leaving the dialog stuck on an error.
 
 ## In Progress
 
@@ -75,7 +84,7 @@ Update this file whenever the current phase, active feature, or implementation s
 
 ## Next Up
 
-- Build the project workspace route (`/editor/[roomId]`) that the create flow navigates to and that delete checks against.
+- Real-time collaborative canvas inside `/editor/[roomId]` (Liveblocks room provisioning + React Flow surface), replacing the canvas placeholder.
 
 ## Open Questions
 
