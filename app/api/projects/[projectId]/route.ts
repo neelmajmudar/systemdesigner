@@ -29,12 +29,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     where: { id: projectId },
   });
 
-  if (!project) {
+  // Treat a missing project and a project owned by someone else identically so
+  // a caller cannot probe which project IDs exist.
+  if (!project || project.ownerId !== userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (project.ownerId !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const updated = await prisma.project.update({
@@ -58,12 +56,10 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     where: { id: projectId },
   });
 
-  if (!project) {
+  // Treat a missing project and a project owned by someone else identically so
+  // a caller cannot probe which project IDs exist.
+  if (!project || project.ownerId !== userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (project.ownerId !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await prisma.project.delete({

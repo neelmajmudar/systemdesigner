@@ -13,6 +13,7 @@ interface ProjectSidebarProps {
   isOpen: boolean;
   owned: Project[];
   shared: Project[];
+  activeProjectId?: string;
   onClose: () => void;
   onCreate: () => void;
   onRename: (project: Project) => void;
@@ -23,6 +24,7 @@ export function ProjectSidebar({
   isOpen,
   owned,
   shared,
+  activeProjectId,
   onClose,
   onCreate,
   onRename,
@@ -65,6 +67,7 @@ export function ProjectSidebar({
                   <ProjectListItem
                     key={project.id}
                     project={project}
+                    isActive={project.id === activeProjectId}
                     onRename={onRename}
                     onDelete={onDelete}
                   />
@@ -85,7 +88,11 @@ export function ProjectSidebar({
             <ScrollArea className="h-full">
               <div className="flex flex-col gap-1 pr-2">
                 {shared.map((project) => (
-                  <ProjectListItem key={project.id} project={project} />
+                  <ProjectListItem
+                    key={project.id}
+                    project={project}
+                    isActive={project.id === activeProjectId}
+                  />
                 ))}
               </div>
             </ScrollArea>

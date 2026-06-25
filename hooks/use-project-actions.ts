@@ -116,6 +116,15 @@ export function useProjectActions(): UseProjectActions {
       });
 
       if (!response.ok) {
+        // A 409 means this exact room ID already exists — almost always this
+        // user's own double submit or retry. The project is already created,
+        // so open it instead of stranding the user on an error.
+        if (response.status === 409) {
+          reset();
+          router.push(`/editor/${roomId}`);
+          return;
+        }
+
         setError(
           await readErrorMessage(response, "Could not create the project."),
         );
